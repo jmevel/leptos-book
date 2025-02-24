@@ -40,13 +40,13 @@ fn ProgressBar() -> impl IntoView {
         <progress
             max="50"
             // hmm... where will we get this from?
-            value=progress
+            value=value
         />
     }
 }
 ```
 
-There’s just one problem: `progress` is not defined. Where should it come from?
+There’s just one problem: `value` is not defined. Where should it come from?
 When we were defining everything manually, we just used the local variable names.
 Now we need some way to pass an argument into the component.
 
@@ -62,13 +62,13 @@ In Leptos, you define props by giving additional arguments to the component func
 ```rust
 #[component]
 fn ProgressBar(
-    progress: ReadSignal<i32>
+    value: ReadSignal<i32>
 ) -> impl IntoView {
     view! {
         <progress
             max="50"
             // now this works
-            value=progress
+            value=value
         />
     }
 }
@@ -85,25 +85,25 @@ fn App() -> impl IntoView {
             "Click me"
         </button>
         // now we use our component!
-        <ProgressBar progress=count/>
+        <ProgressBar value=count/>
     }
 }
 ```
 
 Using a component in the view looks a lot like using an HTML element. You’ll
 notice that you can easily tell the difference between an element and a component
-because components always have `PascalCase` names. You pass the `progress` prop
+because components always have `PascalCase` names. You pass the `value` prop
 in as if it were an HTML element attribute. Simple.
 
 ### Reactive and Static Props
 
-You’ll notice that throughout this example, `progress` takes a reactive
+You’ll notice that throughout this example, `value` takes a reactive
 `ReadSignal<i32>`, and not a plain `i32`. This is **very important**.
 
 Component props have no special meaning attached to them. A component is simply
 a function that runs once to set up the user interface. The only way to tell the
 interface to respond to changes is to pass it a signal type. So if you have a
-component property that will change over time, like our `progress`, it should
+component property that will change over time, like our `value`, it should
 be a signal.
 
 ### `optional` Props
@@ -118,19 +118,19 @@ fn ProgressBar(
     // you can specify it or not when you use <ProgressBar/>
     #[prop(optional)]
     max: u16,
-    progress: ReadSignal<i32>
+    value: ReadSignal<i32>
 ) -> impl IntoView {
     view! {
         <progress
             max=max
-            value=progress
+            value=value
         />
     }
 }
 ```
 
-Now, we can use `<ProgressBar max=50 progress=count/>`, or we can omit `max`
-to use the default value (i.e., `<ProgressBar progress=count/>`). The default value
+Now, we can use `<ProgressBar max=50 value=count/>`, or we can omit `max`
+to use the default value (i.e., `<ProgressBar value=count/>`). The default value
 on an `optional` is its `Default::default()` value, which for a `u16` is going to
 be `0`. In the case of a progress bar, a max value of `0` is not very useful.
 
@@ -146,12 +146,12 @@ with `#[prop(default = ...)`.
 fn ProgressBar(
     #[prop(default = 100)]
     max: u16,
-    progress: ReadSignal<i32>
+    value: ReadSignal<i32>
 ) -> impl IntoView {
     view! {
         <progress
             max=max
-            value=progress
+            value=value
         />
     }
 }
@@ -161,7 +161,7 @@ fn ProgressBar(
 
 This is great. But we began with two counters, one driven by `count`, and one by
 the derived signal `double_count`. Let’s recreate that by using `double_count`
-as the `progress` prop on another `<ProgressBar/>`.
+as the `value` prop on another `<ProgressBar/>`.
 
 ```rust,compile_fail
 #[component]
@@ -173,15 +173,15 @@ fn App() -> impl IntoView {
         <button on:click=move |_| { set_count.update(|n| *n += 1); }>
             "Click me"
         </button>
-        <ProgressBar progress=count/>
+        <ProgressBar value=count/>
         // add a second progress bar
-        <ProgressBar progress=double_count/>
+        <ProgressBar value=double_count/>
     }
 }
 ```
 
 Hm... this won’t compile. It should be pretty easy to understand why: we’ve declared
-that the `progress` prop takes `ReadSignal<i32>`, and `double_count` is not
+that the `value` prop takes `ReadSignal<i32>`, and `double_count` is not
 `ReadSignal<i32>`. As rust-analyzer will tell you, its type is `|| -> i32`, i.e.,
 it’s a closure that returns an `i32`.
 
@@ -196,12 +196,12 @@ implement the trait `Fn() -> i32`. So you could use a generic component:
 fn ProgressBar(
     #[prop(default = 100)]
     max: u16,
-    progress: impl Fn() -> i32 + Send + Sync + 'static
+    value: impl Fn() -> i32 + Send + Sync + 'static
 ) -> impl IntoView {
     view! {
         <progress
             max=max
-            value=progress
+            value=value
         />
         // Add a line-break to avoid overlap
         <br/>
@@ -209,7 +209,7 @@ fn ProgressBar(
 }
 ```
 
-This is a perfectly reasonable way to write this component: `progress` now takes
+This is a perfectly reasonable way to write this component: `value` now takes
 any value that implements this `Fn()` trait.
 
 > Generic props can also be specified using a `where` clause, or using inline generics like `ProgressBar<F: Fn() -> i32 + 'static>`.
@@ -251,13 +251,13 @@ fn ProgressBar(
     #[prop(default = 100)]
     max: u16,
     #[prop(into)]
-    progress: Signal<i32>
+    value: Signal<i32>
 ) -> impl IntoView
 {
     view! {
         <progress
             max=max
-            value=progress
+            value=value
         />
         <br/>
     }
@@ -273,9 +273,9 @@ fn App() -> impl IntoView {
             "Click me"
         </button>
         // .into() converts `ReadSignal` to `Signal`
-        <ProgressBar progress=count/>
+        <ProgressBar value=count/>
         // use `Signal::derive()` to wrap a derived signal
-        <ProgressBar progress=Signal::derive(double_count)/>
+        <ProgressBar value=Signal::derive(double_count)/>
     }
 }
 ```
@@ -287,13 +287,13 @@ Note that you can’t specify optional generic props for a component. Let’s se
 ```rust,compile_fail
 #[component]
 fn ProgressBar<F: Fn() -> i32 + Send + Sync + 'static>(
-    #[prop(optional)] progress: Option<F>,
+    #[prop(optional)] value: Option<F>,
 ) -> impl IntoView {
     progress.map(|progress| {
         view! {
             <progress
                 max=100
-                value=progress
+                value=value
             />
             <br/>
         }
@@ -327,13 +327,13 @@ However, you can get around this by providing a concrete type using `Box<dyn _>`
 ```rust
 #[component]
 fn ProgressBar(
-    #[prop(optional)] progress: Option<Box<dyn Fn() -> i32 + Send + Sync>>,
+    #[prop(optional)] value: Option<Box<dyn Fn() -> i32 + Send + Sync>>,
 ) -> impl IntoView {
-    progress.map(|progress| {
+    value.map(|value| {
         view! {
             <progress
                 max=100
-                value=progress
+                value=value
             />
             <br/>
         }
@@ -371,7 +371,7 @@ fn ProgressBar(
     max: u16,
     /// How much progress should be displayed.
     #[prop(into)]
-    progress: Signal<i32>,
+    value: Signal<i32>,
 ) -> impl IntoView {
     /* ... */
 }
@@ -468,12 +468,12 @@ fn ProgressBar(
     // It can be helpful in component APIs like this, where we
     // might want to take any kind of reactive value
     /// How much progress should be displayed.
-    progress: Signal<i32>,
+    value: Signal<i32>,
 ) -> impl IntoView {
     view! {
         <progress
             max={max}
-            value=progress
+            value=value
         />
         <br/>
     }
@@ -496,14 +496,14 @@ fn App() -> impl IntoView {
         <br/>
         // If you have this open in CodeSandbox or an editor with
         // rust-analyzer support, try hovering over `ProgressBar`,
-        // `max`, or `progress` to see the docs we defined above
-        <ProgressBar max=50 progress=count/>
+        // `max`, or `value` to see the docs we defined above
+        <ProgressBar max=50 value=count/>
         // Let's use the default max value on this one
         // the default is 100, so it should move half as fast
-        <ProgressBar progress=count/>
+        <ProgressBar value=count/>
         // Signal::derive creates a Signal wrapper from our derived signal
         // using double_count means it should move twice as fast
-        <ProgressBar max=50 progress=Signal::derive(double_count)/>
+        <ProgressBar max=50 value=Signal::derive(double_count)/>
     }
 }
 
