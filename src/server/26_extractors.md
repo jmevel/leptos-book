@@ -116,7 +116,7 @@ let app_state = MyData {
 // build our application with a route
 let app = Router::new()
     .leptos_routes_with_context(
-        &app_state,
+        &app_state.leptos_options,
         routes,
         {
             let app_state = app_state.clone();
@@ -125,7 +125,7 @@ let app = Router::new()
         App,
     )
     .fallback(file_and_error_handler)
-    .with_state(app_state);
+    .with_state(app_state.leptos_options);
 
 // ...
 #[server]
